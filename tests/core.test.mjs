@@ -12,7 +12,7 @@ const view = (...bytes) => new DataView(new Uint8Array(bytes).buffer);
 const profile = { age: 30, maxHr: null, restHr: null, method: 'max' };
 
 test('parseHeartRate: pulso de 8 bits', () => {
-  assert.deepEqual(parseHeartRate(view(0x00, 72)), { bpm: 72, contact: null, rr: [] });
+  assert.deepEqual(parseHeartRate(view(0x00, 72)), { bpm: 72, contact: null, rr: [], energy: null });
 });
 
 test('parseHeartRate: pulso de 16 bits, contacto e intervalos RR', () => {
@@ -20,7 +20,17 @@ test('parseHeartRate: pulso de 16 bits, contacto e intervalos RR', () => {
   const r = parseHeartRate(view(0x1f, 0x2c, 0x01, 0xaa, 0xbb, 0x00, 0x04, 0x00, 0x02));
   assert.equal(r.bpm, 300);
   assert.equal(r.contact, true);
+  assert.equal(r.energy, 48042);
   assert.deepEqual(r.rr, [1000, 500]);
+});
+
+test('parseHeartRate: solo energía gastada', () => {
+  // flags 0x08: 8-bit BPM + energía
+  const r = parseHeartRate(view(0x08, 90, 0x64, 0x00));
+  assert.equal(r.bpm, 90);
+  assert.equal(r.contact, null);
+  assert.equal(r.energy, 100);
+  assert.deepEqual(r.rr, []);
 });
 
 test('zonas por % de FC máxima', () => {

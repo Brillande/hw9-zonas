@@ -107,6 +107,7 @@ export class DemoMonitor extends Monitor {
 
   async connect() {
     const startedAt = Date.now();
+    let energyAccum = 0;
     this.emit('status', 'connected');
     this.emit('battery', 100);
     this.#timer = setInterval(() => {
@@ -115,7 +116,8 @@ export class DemoMonitor extends Monitor {
       const pct = 0.52 + wave * 0.43;
       const bpm = Math.round(this.#getMaxHr() * pct + (Math.random() * 4 - 2));
       const rr = [Math.round(60000 / bpm + (Math.random() * 60 - 30))];
-      this.emit('hr', { bpm, contact: true, rr });
+      energyAccum += bpm / 60;
+      this.emit('hr', { bpm, contact: true, rr, energy: Math.round(energyAccum) });
     }, 1000);
   }
 
