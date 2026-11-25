@@ -114,7 +114,8 @@ export class DemoMonitor extends Monitor {
       const wave = (1 - Math.cos((2 * Math.PI * t) / 180)) / 2; // ciclo de 3 min
       const pct = 0.52 + wave * 0.43;
       const bpm = Math.round(this.#getMaxHr() * pct + (Math.random() * 4 - 2));
-      this.emit('hr', { bpm, contact: true, rr: [] });
+      const rr = [Math.round(60000 / bpm + (Math.random() * 60 - 30))];
+      this.emit('hr', { bpm, contact: true, rr });
     }, 1000);
   }
 
