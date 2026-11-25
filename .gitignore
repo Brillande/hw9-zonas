@@ -8,3 +8,4 @@ android/.gradle/
 android/build/
 .wrangler/
 .capacitor/
+.claude/
