@@ -5,6 +5,7 @@ import { load, save, newId, MAX_HISTORY } from './storage.js';
 import { initWeb, fillAds } from './web.js';
 import { isNative, keepScreenOn, backgroundMode, speak, unlockAudio, beep } from './platform.js';
 import { computeTRIMP, trimpLabel } from './trimp.js';
+import { preparePoincare, detectEctopic, drawPoincare } from './rr-viz.js';
 
 const HR_STALE_MS = 5000;
 const CHART_MS = 5 * 60 * 1000;
@@ -31,6 +32,8 @@ const state = {
   lastCountdown: 0,
   noticeTimer: null,
   coach: newCoach(),
+  rrVizBuffer: [],
+  lastPoincareRender: 0,
 };
 
 function newCoach() {
@@ -78,6 +81,10 @@ function attach(monitor) {
   monitor.addEventListener('hr', (e) => {
     state.bpm = e.detail.bpm || null;
     state.bpmAt = Date.now();
+    if (e.detail.rr?.length) {
+      state.rrVizBuffer.push(...e.detail.rr);
+      if (state.rrVizBuffer.length > 200) state.rrVizBuffer.splice(0, state.rrVizBuffer.length - 200);
+    }
     // Con la pantalla apagada Android frena los temporizadores de la web;
     // cada lectura de la banda hace avanzar el entrenamiento igualmente.
     if (state.session && Date.now() - state.lastTick >= 1000) tick();
@@ -93,6 +100,9 @@ function attach(monitor) {
     if (e.detail === 'disconnected') {
       state.monitor = null;
       state.battery = null;
+      state.rrVizBuffer = [];
+      $('poincare-card').hidden = true;
+      $('ectopic-alert').hidden = true;
     }
     renderConn();
   });
@@ -423,6 +433,40 @@ function renderLive() {
   $('btn-pause').textContent = session.paused ? 'Reanudar' : 'Pausar';
 }
 
+function renderPoincare() {
+  const card = $('poincare-card');
+  if (state.rrVizBuffer.length < 10) {
+    card.hidden = true;
+    return;
+  }
+  card.hidden = false;
+  const pData = preparePoincare(state.rrVizBuffer);
+  if (!pData.length) return;
+  const canvas = $('poincare');
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  if (!w) return;
+  const dpr = window.devicePixelRatio || 1;
+  if (canvas.width !== Math.round(w * dpr)) {
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+  }
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawPoincare(ctx, pData, w, h);
+}
+
+function renderEctopic() {
+  const el = $('ectopic-alert');
+  const ectopics = detectEctopic(state.rrVizBuffer);
+  if (ectopics.length) {
+    el.textContent = `⚠ Detectados ${ectopics.length} latidos irregulares en los últimos ${state.rrVizBuffer.length} latidos`;
+    el.hidden = false;
+  } else {
+    el.hidden = true;
+  }
+}
+
 function tick() {
   const now = Date.now();
   const dt = (now - state.lastTick) / 1000;
@@ -449,6 +493,11 @@ function tick() {
   renderHr();
   renderLive();
   drawChart();
+  if (now - state.lastPoincareRender >= 5000) {
+    state.lastPoincareRender = now;
+    renderPoincare();
+    renderEctopic();
+  }
 }
 
 // ---------- Rutinas ----------

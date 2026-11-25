@@ -5,6 +5,7 @@ import { zoneBounds, zoneFor, maxHrOf } from '../js/zones.js';
 import { Session, expandSteps, routineDuration, formatDuration } from '../js/session.js';
 import { computeTRIMP, trimpLabel } from '../js/trimp.js';
 import { caloriesPerMinute } from '../js/calories.js';
+import { preparePoincare, detectEctopic } from '../js/rr-viz.js';
 
 const view = (...bytes) => new DataView(new Uint8Array(bytes).buffer);
 const profile = { age: 30, maxHr: null, restHr: null, method: 'max' };
@@ -170,4 +171,36 @@ test('Session no acumula calorías sin peso en el perfil', () => {
   const s = new Session({ routine, bounds: zoneBounds(profile), profile: p });
   for (let i = 0; i < 60; i++) s.tick(1, 150);
   assert.equal(s.summary().calories, 0);
+});
+
+test('preparePoincare devuelve pares consecutivos', () => {
+  const pairs = preparePoincare([800, 810, 790, 805]);
+  assert.equal(pairs.length, 3);
+  assert.deepEqual(pairs[0], { x: 800, y: 810 });
+  assert.deepEqual(pairs[1], { x: 810, y: 790 });
+  assert.deepEqual(pairs[2], { x: 790, y: 805 });
+});
+
+test('preparePoincare filtra valores fuera de rango fisiológico', () => {
+  const pairs = preparePoincare([800, 200, 810, 2500, 790]);
+  assert.equal(pairs.length, 2);
+  assert.deepEqual(pairs[0], { x: 800, y: 810 });
+  assert.deepEqual(pairs[1], { x: 810, y: 790 });
+});
+
+test('detectEctopic identifica latido aberrante', () => {
+  const ectopics = detectEctopic([800, 810, 790, 805, 795, 400, 800]);
+  assert.ok(ectopics.length > 0);
+  const found = ectopics.find((e) => e.rr === 400);
+  assert.ok(found, 'debe detectar el latido de 400 ms como ectópico');
+  assert.equal(found.index, 5);
+});
+
+test('detectEctopic no marca latidos uniformes', () => {
+  const ectopics = detectEctopic([800, 805, 798, 810, 802, 795, 808]);
+  assert.equal(ectopics.length, 0);
+});
+
+test('detectEctopic devuelve vacío con menos de 5 valores', () => {
+  assert.deepEqual(detectEctopic([800, 810, 790]), []);
 });
