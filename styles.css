@@ -126,3 +126,7 @@ input[type="checkbox"] { width: 18px; height: 18px; }
 }
 .tabs button { font: inherit; font-size: .88rem; color: var(--muted); background: none; border: 0; padding: 16px 4px; cursor: pointer; border-top: 2px solid transparent; }
 .tabs button.active { color: var(--text); border-top-color: var(--accent); }
+
+/* TRIMP */
+.trimp-display { display: flex; align-items: baseline; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.trimp-value { font-size: 1.4rem; font-weight: 700; font-variant-numeric: tabular-nums; }

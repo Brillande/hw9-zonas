@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { parseHeartRate } from '../js/hr-parse.js';
 import { zoneBounds, zoneFor, maxHrOf } from '../js/zones.js';
 import { Session, expandSteps, routineDuration, formatDuration } from '../js/session.js';
+import { computeTRIMP, trimpLabel } from '../js/trimp.js';
 
 const view = (...bytes) => new DataView(new Uint8Array(bytes).buffer);
 const profile = { age: 30, maxHr: null, restHr: null, method: 'max' };
@@ -117,4 +118,22 @@ test('formatDuration', () => {
   assert.equal(formatDuration(5), '0:05');
   assert.equal(formatDuration(125), '2:05');
   assert.equal(formatDuration(3725), '1:02:05');
+});
+
+test('computeTRIMP: suma ponderada por zona', () => {
+  assert.equal(computeTRIMP([0, 600, 600, 600, 300, 60]), 64.5);
+});
+
+test('computeTRIMP: todo por debajo de Z1 da cero', () => {
+  assert.equal(computeTRIMP([3600, 0, 0, 0, 0, 0]), 0);
+});
+
+test('trimpLabel: etiquetas en castellano', () => {
+  assert.equal(trimpLabel(0), 'Ligero');
+  assert.equal(trimpLabel(49.9), 'Ligero');
+  assert.equal(trimpLabel(50), 'Moderado');
+  assert.equal(trimpLabel(100), 'Intenso');
+  assert.equal(trimpLabel(199), 'Intenso');
+  assert.equal(trimpLabel(200), 'Muy intenso');
+  assert.equal(trimpLabel(500), 'Muy intenso');
 });

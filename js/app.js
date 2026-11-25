@@ -4,6 +4,7 @@ import { Session, routineDuration, expandSteps, formatDuration } from './session
 import { load, save, newId, MAX_HISTORY } from './storage.js';
 import { initWeb, fillAds } from './web.js';
 import { isNative, keepScreenOn, backgroundMode, speak, unlockAudio, beep } from './platform.js';
+import { computeTRIMP, trimpLabel } from './trimp.js';
 
 const HR_STALE_MS = 5000;
 const CHART_MS = 5 * 60 * 1000;
@@ -364,11 +365,21 @@ function renderZoneTimes() {
     $('zone-times-title').textContent = 'Tiempo en zonas';
     $('zone-times-summary').textContent = '';
     $('zone-times').innerHTML = zoneTimesHtml(session.zoneSecs);
+    const trimp = computeTRIMP(session.zoneSecs);
+    $('trimp-display').hidden = false;
+    $('trimp-value').textContent = `TRIMP ${trimp}`;
+    $('trimp-label').textContent = trimpLabel(trimp);
   } else if (summary) {
     $('zone-times-title').textContent = 'Último entrenamiento';
     $('zone-times-summary').textContent =
       `${summary.routineName} · ${formatDuration(summary.duration)} · media ${summary.avgBpm || '--'} · máx ${summary.maxBpm || '--'} ppm`;
     $('zone-times').innerHTML = zoneTimesHtml(summary.zoneSecs);
+    const trimp = computeTRIMP(summary.zoneSecs);
+    $('trimp-display').hidden = false;
+    $('trimp-value').textContent = `TRIMP ${trimp}`;
+    $('trimp-label').textContent = trimpLabel(trimp);
+  } else {
+    $('trimp-display').hidden = true;
   }
 }
 
@@ -641,7 +652,7 @@ function renderHistory() {
             <h3>${esc(h.routineName)}</h3>
             <span class="muted">${new Date(h.date).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}</span>
           </div>
-          <p class="muted">${formatDuration(h.duration)} · media ${h.avgBpm || '--'} · máx ${h.maxBpm || '--'} ppm</p>
+          <p class="muted">${formatDuration(h.duration)} · media ${h.avgBpm || '--'} · máx ${h.maxBpm || '--'} ppm · TRIMP ${computeTRIMP(h.zoneSecs)}</p>
           ${zoneTimesHtml(h.zoneSecs)}
           <div class="row"><button class="btn small danger" data-act="del" data-id="${h.id}">Eliminar</button></div>
         </div>`,
