@@ -30,6 +30,15 @@
       </div>
       <div id="zone-bar" class="zone-bar"></div>
 
+      <div id="recovery-card" class="card" hidden>
+        <h2>Recuperación</h2>
+        <div class="recovery-main">
+          <div class="recovery-score"><span id="recovery-value">--</span><small>/100</small></div>
+          <div id="recovery-label" class="recovery-label">Sin datos</div>
+        </div>
+        <div id="recovery-baseline" class="muted"></div>
+      </div>
+
       <div id="setup" class="card">
         <label class="field">Rutina
           <select id="routine-select"></select>
@@ -78,6 +87,11 @@
     </section>
 
     <section id="view-history" class="view" hidden>
+      <div id="weekly-load" class="card" hidden>
+        <h2>Carga semanal</h2>
+        <div class="weekly-load-value"><span id="weekly-load-value">0</span><small>puntos (7 días)</small></div>
+        <div id="weekly-load-bar" class="weekly-load-bar"></div>
+      </div>
       <div id="history-list"></div>
       <div class="ad-slot" hidden></div>
     </section>

@@ -126,3 +126,15 @@ input[type="checkbox"] { width: 18px; height: 18px; }
 }
 .tabs button { font: inherit; font-size: .88rem; color: var(--muted); background: none; border: 0; padding: 16px 4px; cursor: pointer; border-top: 2px solid transparent; }
 .tabs button.active { color: var(--text); border-top-color: var(--accent); }
+
+/* Recovery */
+.recovery-main { text-align: center; }
+.recovery-score { font-size: 3.5rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.recovery-score small { font-size: 1rem; font-weight: 400; color: var(--muted); }
+.recovery-label { font-size: 1rem; font-weight: 600; margin-top: 4px; }
+/* Weekly load */
+.weekly-load-value { font-size: 2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.weekly-load-value small { font-size: .85rem; font-weight: 400; color: var(--muted); margin-left: 6px; }
+.weekly-load-bar { display: flex; gap: 3px; height: 32px; margin-top: 10px; }
+.weekly-load-bar .wl-day { flex: 1; background: var(--accent); border-radius: 4px; opacity: 0.3; display: flex; align-items: flex-end; }
+.weekly-load-bar .wl-day.has-data { opacity: 1; }
