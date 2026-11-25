@@ -652,7 +652,7 @@ function renderHistory() {
             <h3>${esc(h.routineName)}</h3>
             <span class="muted">${new Date(h.date).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}</span>
           </div>
-          <p class="muted">${formatDuration(h.duration)} · media ${h.avgBpm || '--'} · máx ${h.maxBpm || '--'} ppm · TRIMP ${computeTRIMP(h.zoneSecs)}</p>
+          <p class="muted">${formatDuration(h.duration)} · media ${h.avgBpm || '--'} · máx ${h.maxBpm || '--'} ppm${h.zoneSecs ? ` · TRIMP ${computeTRIMP(h.zoneSecs)}` : ''}</p>
           ${zoneTimesHtml(h.zoneSecs)}
           <div class="row"><button class="btn small danger" data-act="del" data-id="${h.id}">Eliminar</button></div>
         </div>`,
