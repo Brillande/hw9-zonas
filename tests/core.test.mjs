@@ -4,6 +4,7 @@ import { parseHeartRate } from '../js/hr-parse.js';
 import { zoneBounds, zoneFor, maxHrOf } from '../js/zones.js';
 import { Session, expandSteps, routineDuration, formatDuration } from '../js/session.js';
 import { computeTRIMP, trimpLabel } from '../js/trimp.js';
+import { caloriesPerMinute } from '../js/calories.js';
 
 const view = (...bytes) => new DataView(new Uint8Array(bytes).buffer);
 const profile = { age: 30, maxHr: null, restHr: null, method: 'max' };
@@ -136,4 +137,37 @@ test('trimpLabel: etiquetas en castellano', () => {
   assert.equal(trimpLabel(199), 'Intenso');
   assert.equal(trimpLabel(200), 'Muy intenso');
   assert.equal(trimpLabel(500), 'Muy intenso');
+});
+
+test('caloriesPerMinute: fórmula masculina (Keytel 2005)', () => {
+  const cal = caloriesPerMinute(150, 75, 30, true);
+  assert.ok(cal > 14 && cal < 15, `esperado ~14-15, obtenido ${cal}`);
+});
+
+test('caloriesPerMinute: fórmula femenina (Keytel 2005)', () => {
+  const cal = caloriesPerMinute(150, 60, 30, false);
+  assert.ok(cal > 13 && cal < 14, `esperado ~13-14, obtenido ${cal}`);
+});
+
+test('caloriesPerMinute: devuelve 0 si falta el peso', () => {
+  assert.equal(caloriesPerMinute(150, null, 30, true), 0);
+});
+
+test('caloriesPerMinute: devuelve 0 si falta la edad', () => {
+  assert.equal(caloriesPerMinute(150, 75, null, true), 0);
+});
+
+test('Session acumula calorías con perfil completo', () => {
+  const p = { age: 30, weight: 75, sex: 'M' };
+  const s = new Session({ routine, bounds: zoneBounds(profile), profile: p });
+  for (let i = 0; i < 60; i++) s.tick(1, 150);
+  const sum = s.summary();
+  assert.ok(sum.calories > 0, `calorías deberían ser positivas, obtenido ${sum.calories}`);
+});
+
+test('Session no acumula calorías sin peso en el perfil', () => {
+  const p = { age: 30, weight: null, sex: 'M' };
+  const s = new Session({ routine, bounds: zoneBounds(profile), profile: p });
+  for (let i = 0; i < 60; i++) s.tick(1, 150);
+  assert.equal(s.summary().calories, 0);
 });

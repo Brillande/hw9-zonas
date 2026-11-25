@@ -327,7 +327,7 @@ function coach(session, bpm, dt, now) {
 
 function startSession() {
   unlockAudio();
-  state.session = new Session({ routine: selectedRoutine(), bounds: bounds() });
+  state.session = new Session({ routine: selectedRoutine(), bounds: bounds(), profile: { ...data.profile } });
   state.lastSummary = null;
   state.lastTick = Date.now();
   state.coach = newCoach();
@@ -372,7 +372,7 @@ function renderZoneTimes() {
   } else if (summary) {
     $('zone-times-title').textContent = 'Último entrenamiento';
     $('zone-times-summary').textContent =
-      `${summary.routineName} · ${formatDuration(summary.duration)} · media ${summary.avgBpm || '--'} · máx ${summary.maxBpm || '--'} ppm`;
+      `${summary.routineName} · ${formatDuration(summary.duration)} · media ${summary.avgBpm || '--'} · máx ${summary.maxBpm || '--'} ppm${summary.calories ? ` · ${summary.calories} kcal` : ''}`;
     $('zone-times').innerHTML = zoneTimesHtml(summary.zoneSecs);
     const trimp = computeTRIMP(summary.zoneSecs);
     $('trimp-display').hidden = false;
@@ -419,6 +419,7 @@ function renderLive() {
   $('st-elapsed').textContent = formatDuration(session.elapsed);
   $('st-avg').textContent = session.avgBpm || '--';
   $('st-max').textContent = session.maxBpm || '--';
+  $('st-cal').textContent = session.calories ? Math.round(session.calories) : '--';
   $('btn-pause').textContent = session.paused ? 'Reanudar' : 'Pausar';
 }
 
@@ -652,7 +653,7 @@ function renderHistory() {
             <h3>${esc(h.routineName)}</h3>
             <span class="muted">${new Date(h.date).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}</span>
           </div>
-          <p class="muted">${formatDuration(h.duration)} · media ${h.avgBpm || '--'} · máx ${h.maxBpm || '--'} ppm${h.zoneSecs ? ` · TRIMP ${computeTRIMP(h.zoneSecs)}` : ''}</p>
+          <p class="muted">${formatDuration(h.duration)} · media ${h.avgBpm || '--'} · máx ${h.maxBpm || '--'} ppm${h.calories ? ` · ${h.calories} kcal` : ''}${h.zoneSecs ? ` · TRIMP ${computeTRIMP(h.zoneSecs)}` : ''}</p>
           ${zoneTimesHtml(h.zoneSecs)}
           <div class="row"><button class="btn small danger" data-act="del" data-id="${h.id}">Eliminar</button></div>
         </div>`,
@@ -676,6 +677,8 @@ function renderSettings() {
   $('set-max').value = p.maxHr ?? '';
   $('set-max').placeholder = `Estimada: ${220 - p.age}`;
   $('set-rest').value = p.restHr ?? '';
+  $('set-weight').value = p.weight ?? '';
+  $('set-sex').value = p.sex;
   $('set-method').value = p.method;
   $('set-voice').checked = p.voice;
   $('set-bg-audio').checked = !!p.bgAudio;
@@ -693,6 +696,8 @@ function onSettingsChange(e) {
   p.age = optional('set-age', 10, 100) ?? p.age;
   p.maxHr = optional('set-max', 100, 240);
   p.restHr = optional('set-rest', 30, 120);
+  p.weight = optional('set-weight', 30, 250);
+  p.sex = $('set-sex').value;
   p.method = $('set-method').value;
   p.voice = $('set-voice').checked;
   p.bgAudio = $('set-bg-audio').checked;

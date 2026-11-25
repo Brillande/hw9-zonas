@@ -1,6 +1,7 @@
 // Motor del entrenamiento: avance de pasos y estadísticas. Sin DOM.
 
 import { zoneFor } from './zones.js';
+import { caloriesPerMinute } from './calories.js';
 
 export function formatDuration(totalSeconds) {
   const s = Math.max(0, Math.round(totalSeconds));
@@ -26,10 +27,11 @@ export function expandSteps(routine) {
 export const routineDuration = (routine) => expandSteps(routine).reduce((sum, s) => sum + s.duration, 0);
 
 export class Session {
-  constructor({ routine = null, bounds, startedAt = Date.now() }) {
+  constructor({ routine = null, bounds, profile = null, startedAt = Date.now() }) {
     this.routineName = routine ? routine.name : 'Sesión libre';
     this.steps = expandSteps(routine);
     this.bounds = bounds;
+    this.profile = profile;
     this.startedAt = startedAt;
     this.elapsed = 0;
     this.stepIndex = 0;
@@ -41,6 +43,7 @@ export class Session {
     this.hrSum = 0;
     this.maxBpm = 0;
     this.offTargetSecs = 0;
+    this.calories = 0;
   }
 
   get step() {
@@ -76,6 +79,9 @@ export class Session {
       this.hrSecs += dt;
       this.hrSum += bpm * dt;
       this.maxBpm = Math.max(this.maxBpm, bpm);
+      if (this.profile?.weight) {
+        this.calories += caloriesPerMinute(bpm, this.profile.weight, this.profile.age, this.profile.sex !== 'F') * (dt / 60);
+      }
     }
     const state = this.targetState(bpm);
     this.offTargetSecs = state === 'low' || state === 'high' ? this.offTargetSecs + dt : 0;
@@ -106,6 +112,7 @@ export class Session {
       avgBpm: this.avgBpm,
       maxBpm: this.maxBpm,
       zoneSecs: this.zoneSecs.map(Math.round),
+      calories: Math.round(this.calories),
     };
   }
 }
