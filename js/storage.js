@@ -11,7 +11,7 @@ const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.
 
 function defaults() {
   return {
-    profile: { age: 30, maxHr: null, restHr: null, method: 'max', voice: true, bgAudio: isAndroid, zoneLows: null },
+    profile: { age: 30, maxHr: null, restHr: null, method: 'max', voice: true, bgAudio: isAndroid, zoneLows: null, weight: null, sex: 'M' },
     routines: [
       {
         id: newId(),

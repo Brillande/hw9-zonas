@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { parseHeartRate } from '../js/hr-parse.js';
 import { zoneBounds, zoneFor, maxHrOf } from '../js/zones.js';
 import { Session, expandSteps, routineDuration, formatDuration } from '../js/session.js';
+import { caloriesPerMinute } from '../js/calories.js';
 
 const view = (...bytes) => new DataView(new Uint8Array(bytes).buffer);
 const profile = { age: 30, maxHr: null, restHr: null, method: 'max' };
@@ -117,4 +118,24 @@ test('formatDuration', () => {
   assert.equal(formatDuration(5), '0:05');
   assert.equal(formatDuration(125), '2:05');
   assert.equal(formatDuration(3725), '1:02:05');
+});
+
+test('caloriesPerMinute: fórmula masculina (Keytel 2005)', () => {
+  const cal = caloriesPerMinute(150, 75, 30, true);
+  // (-55.0969 + 0.6309×150 + 0.1988×75 + 0.2017×30) / 4.184 ≈ 14.46
+  assert.ok(cal > 14 && cal < 15, `esperado ~14-15, obtenido ${cal}`);
+});
+
+test('caloriesPerMinute: fórmula femenina (Keytel 2005)', () => {
+  const cal = caloriesPerMinute(150, 60, 30, false);
+  // (-20.4022 + 0.4472×150 + 0.1263×60 + 0.074×30) / 4.184 ≈ 13.50
+  assert.ok(cal > 13 && cal < 14, `esperado ~13-14, obtenido ${cal}`);
+});
+
+test('caloriesPerMinute: devuelve 0 si falta el peso', () => {
+  assert.equal(caloriesPerMinute(150, null, 30, true), 0);
+});
+
+test('caloriesPerMinute: devuelve 0 si falta la edad', () => {
+  assert.equal(caloriesPerMinute(150, 75, null, true), 0);
 });

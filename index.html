@@ -53,6 +53,7 @@
           <div><b id="st-elapsed">0:00</b><span>Tiempo</span></div>
           <div><b id="st-avg">--</b><span>Media</span></div>
           <div><b id="st-max">--</b><span>Máx</span></div>
+          <div><b id="st-cal">--</b><span>kcal</span></div>
         </div>
         <div class="row">
           <button id="btn-pause" class="btn">Pausar</button>
@@ -94,6 +95,15 @@
         <p class="muted">Déjala vacía para estimarla como 220 − edad.</p>
         <label class="field">FC en reposo (ppm)
           <input id="set-rest" type="number" min="30" max="120" inputmode="numeric" placeholder="Opcional">
+        </label>
+        <label class="field">Peso (kg)
+          <input id="set-weight" type="number" min="30" max="250" inputmode="numeric" placeholder="Opcional">
+        </label>
+        <label class="field">Sexo
+          <select id="set-sex">
+            <option value="M">Hombre</option>
+            <option value="F">Mujer</option>
+          </select>
         </label>
         <label class="field">Cálculo de zonas
           <select id="set-method">
