@@ -25,6 +25,7 @@ const state = {
   lastSummary: null,
   routineId: '',
   editing: null,
+  energy: null,
   live: [], // { ts, bpm } de los últimos 5 minutos
   lastTick: Date.now(),
   lastCountdown: 0,
@@ -77,6 +78,8 @@ function attach(monitor) {
   monitor.addEventListener('hr', (e) => {
     state.bpm = e.detail.bpm || null;
     state.bpmAt = Date.now();
+    state.energy = e.detail.energy ?? null;
+    if (state.session && e.detail.energy != null) state.session.updateEnergy(e.detail.energy);
     // Con la pantalla apagada Android frena los temporizadores de la web;
     // cada lectura de la banda hace avanzar el entrenamiento igualmente.
     if (state.session && Date.now() - state.lastTick >= 1000) tick();
@@ -187,6 +190,10 @@ function renderHr() {
   $('hr-card').style.setProperty('--zone-color', zoneColor(zone));
   $('hr-zone').textContent = bpm ? zoneLabel(zone) : 'Sin señal';
   $('hr-pct').textContent = bpm ? `${Math.round((bpm / maxHrOf(data.profile)) * 100)} % de tu FC máxima` : '';
+  const energyEl = $('hr-energy');
+  const displayEnergy = state.session ? state.session.energy : state.energy;
+  energyEl.hidden = displayEnergy == null;
+  if (displayEnergy != null) energyEl.textContent = `${displayEnergy} kJ energía gastada`;
   for (const seg of $('zone-bar').children) seg.classList.toggle('active', Number(seg.dataset.zone) === zone);
 }
 
@@ -641,7 +648,7 @@ function renderHistory() {
             <h3>${esc(h.routineName)}</h3>
             <span class="muted">${new Date(h.date).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}</span>
           </div>
-          <p class="muted">${formatDuration(h.duration)} · media ${h.avgBpm || '--'} · máx ${h.maxBpm || '--'} ppm</p>
+          <p class="muted">${formatDuration(h.duration)} · media ${h.avgBpm || '--'} · máx ${h.maxBpm || '--'} ppm${h.energy ? ` · ${h.energy} kJ` : ''}</p>
           ${zoneTimesHtml(h.zoneSecs)}
           <div class="row"><button class="btn small danger" data-act="del" data-id="${h.id}">Eliminar</button></div>
         </div>`,

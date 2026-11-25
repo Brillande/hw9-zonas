@@ -41,6 +41,8 @@ export class Session {
     this.hrSum = 0;
     this.maxBpm = 0;
     this.offTargetSecs = 0;
+    this.energyStart = null;
+    this.energy = 0;
   }
 
   get step() {
@@ -98,6 +100,12 @@ export class Session {
     if (!this.step) this.done = true;
   }
 
+  updateEnergy(energy) {
+    if (energy == null) return;
+    if (this.energyStart == null) this.energyStart = energy;
+    this.energy = energy - this.energyStart;
+  }
+
   summary() {
     return {
       date: this.startedAt,
@@ -106,6 +114,7 @@ export class Session {
       avgBpm: this.avgBpm,
       maxBpm: this.maxBpm,
       zoneSecs: this.zoneSecs.map(Math.round),
+      energy: this.energy,
     };
   }
 }
