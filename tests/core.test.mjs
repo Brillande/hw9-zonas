@@ -7,6 +7,7 @@ import { computeTRIMP, trimpLabel } from '../js/trimp.js';
 import { caloriesPerMinute } from '../js/calories.js';
 import { preparePoincare, detectEctopic } from '../js/rr-viz.js';
 import { computeRMSSD, computeSDNN, computePNN50, filterRR } from '../js/hrv.js';
+import { minimalRMSSD, computeRecoveryScore, recoveryLabel, recoveryColor, updateBaseline, baselineAvg, weeklyLoad } from '../js/recovery.js';
 
 const view = (...bytes) => new DataView(new Uint8Array(bytes).buffer);
 const profile = { age: 30, maxHr: null, restHr: null, method: 'max' };
@@ -251,4 +252,91 @@ test('computeSDNN: valores conocidos', () => {
   const rr2 = [800, 810, 790, 805, 795];
   const sdnn = computeSDNN(rr2);
   assert.ok(sdnn > 0, 'SDNN debe ser positivo para intervalos variables');
+});
+
+// ---------- Recuperación y carga semanal ----------
+
+test('minimalRMSSD calcula diferencias sucesivas', () => {
+  const rmssd = minimalRMSSD([800, 810, 790, 805, 795]);
+  assert.ok(rmssd >= 10 && rmssd <= 18, `RMSSD ${rmssd} fuera de rango esperado`);
+});
+
+test('minimalRMSSD necesita al menos 5 valores válidos', () => {
+  assert.equal(minimalRMSSD([800, 810, 790]), null);
+  assert.equal(minimalRMSSD([100, 110, 120, 130, 140]), null);
+});
+
+test('computeRecoveryScore: igual a la línea base → 50', () => {
+  assert.equal(computeRecoveryScore(40, 40), 50);
+});
+
+test('computeRecoveryScore: doble de la línea base → 100 (tope)', () => {
+  assert.equal(computeRecoveryScore(80, 40), 100);
+});
+
+test('computeRecoveryScore: mitad de la línea base → 25', () => {
+  assert.equal(computeRecoveryScore(20, 40), 25);
+});
+
+test('computeRecoveryScore: sin línea base → null', () => {
+  assert.equal(computeRecoveryScore(40, null), null);
+  assert.equal(computeRecoveryScore(40, 0), null);
+});
+
+test('recoveryLabel según rango de puntuación', () => {
+  assert.equal(recoveryLabel(null), 'Sin datos');
+  assert.equal(recoveryLabel(15), 'Fatigado · Descansa hoy');
+  assert.equal(recoveryLabel(45), 'Recuperándose · Entrena suave');
+  assert.equal(recoveryLabel(70), 'Listo · Puedes entrenar');
+  assert.equal(recoveryLabel(90), 'Óptimo · Día de intensidad');
+});
+
+test('recoveryColor según rango de puntuación', () => {
+  assert.equal(recoveryColor(null), '#8b98a8');
+  assert.equal(recoveryColor(15), '#f85149');
+  assert.equal(recoveryColor(45), '#f0883e');
+  assert.equal(recoveryColor(70), '#3fb950');
+  assert.equal(recoveryColor(90), '#3b9ae1');
+});
+
+test('weeklyLoad calcula carga ponderada de los últimos 7 días', () => {
+  const now = new Date().toISOString();
+  const history = [
+    { date: now, zoneSecs: [0, 600, 300, 0, 0, 0] },
+    { date: now, zoneSecs: [0, 0, 0, 120, 60, 0] },
+  ];
+  const load = weeklyLoad(history);
+  assert.equal(load, 25);
+});
+
+test('weeklyLoad ignora sesiones antiguas', () => {
+  const old = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+  assert.equal(weeklyLoad([{ date: old, zoneSecs: [0, 600, 0, 0, 0, 0] }]), 0);
+});
+
+test('updateBaseline añade entradas y recorta a 7', () => {
+  const log = [];
+  for (let i = 0; i < 9; i++) {
+    log.push({ date: `2026-01-0${i + 1}`, rmssd: 30 + i });
+  }
+  const updated = updateBaseline(log, 50);
+  assert.equal(updated.length, 7);
+  assert.equal(updated[updated.length - 1].rmssd, 50);
+});
+
+test('updateBaseline actualiza si ya existe la misma fecha', () => {
+  const log = [{ date: new Date().toISOString().slice(0, 10), rmssd: 30 }];
+  const updated = updateBaseline(log, 45);
+  assert.equal(updated.length, 1);
+  assert.equal(updated[0].rmssd, 45);
+});
+
+test('baselineAvg promedia las entradas', () => {
+  const log = [
+    { date: '2026-01-01', rmssd: 30 },
+    { date: '2026-01-02', rmssd: 40 },
+    { date: '2026-01-03', rmssd: 50 },
+  ];
+  assert.equal(baselineAvg(log), 40);
+  assert.equal(baselineAvg([]), null);
 });

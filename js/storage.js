@@ -34,6 +34,7 @@ function defaults() {
       },
     ],
     history: [],
+    hrvBaseline: [],
   };
 }
 
@@ -46,6 +47,7 @@ export function load() {
       profile: { ...base.profile, ...saved.profile },
       routines: Array.isArray(saved.routines) ? saved.routines : base.routines,
       history: Array.isArray(saved.history) ? saved.history : [],
+      hrvBaseline: Array.isArray(saved.hrvBaseline) ? saved.hrvBaseline : [],
     };
   } catch {
     return base;

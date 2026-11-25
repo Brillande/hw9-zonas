@@ -144,3 +144,15 @@ input[type="checkbox"] { width: 18px; height: 18px; }
 .hrv-secondary { display: grid; grid-template-columns: 1fr 1fr; text-align: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
 .hrv-secondary b { display: block; font-size: 1.2rem; font-variant-numeric: tabular-nums; }
 .hrv-secondary span { font-size: .78rem; color: var(--muted); }
+
+/* Recovery */
+.recovery-main { text-align: center; }
+.recovery-score { font-size: 3.5rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.recovery-score small { font-size: 1rem; font-weight: 400; color: var(--muted); }
+.recovery-label { font-size: 1rem; font-weight: 600; margin-top: 4px; }
+/* Weekly load */
+.weekly-load-value { font-size: 2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.weekly-load-value small { font-size: .85rem; font-weight: 400; color: var(--muted); margin-left: 6px; }
+.weekly-load-bar { display: flex; gap: 3px; height: 32px; margin-top: 10px; }
+.weekly-load-bar .wl-day { flex: 1; background: var(--accent); border-radius: 4px; opacity: 0.3; display: flex; align-items: flex-end; }
+.weekly-load-bar .wl-day.has-data { opacity: 1; }

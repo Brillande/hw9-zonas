@@ -7,6 +7,7 @@ import { isNative, keepScreenOn, backgroundMode, speak, unlockAudio, beep } from
 import { computeTRIMP, trimpLabel } from './trimp.js';
 import { preparePoincare, detectEctopic, drawPoincare } from './rr-viz.js';
 import { computeRMSSD, computeSDNN, computePNN50 } from './hrv.js';
+import { minimalRMSSD, computeRecoveryScore, recoveryLabel, recoveryColor, updateBaseline, baselineAvg, weeklyLoad, ZONE_WEIGHTS } from './recovery.js';
 
 const HR_STALE_MS = 5000;
 const CHART_MS = 5 * 60 * 1000;
@@ -35,6 +36,8 @@ const state = {
   hrvSdnn: null,
   hrvPnn50: null,
   hrvAt: 0,
+  recoveryRR: [],
+  lastRecoveryRender: 0,
   lastTick: Date.now(),
   lastCountdown: 0,
   noticeTimer: null,
@@ -93,6 +96,8 @@ function attach(monitor) {
       if (state.rrVizBuffer.length > 200) state.rrVizBuffer.splice(0, state.rrVizBuffer.length - 200);
       state.rrBuffer.push(...e.detail.rr);
       if (state.rrBuffer.length > 120) state.rrBuffer.splice(0, state.rrBuffer.length - 120);
+      for (const v of e.detail.rr) state.recoveryRR.push(v);
+      while (state.recoveryRR.length > 60) state.recoveryRR.shift();
     }
     state.energy = e.detail.energy ?? null;
     if (state.session && e.detail.energy != null) state.session.updateEnergy(e.detail.energy);
@@ -378,6 +383,7 @@ function startSession() {
   unlockAudio();
   state.session = new Session({ routine: selectedRoutine(), bounds: bounds(), profile: { ...data.profile } });
   state.lastSummary = null;
+  state.recoveryRR = [];
   state.lastTick = Date.now();
   state.coach = newCoach();
   keepScreenOn(true);
@@ -402,6 +408,8 @@ function finishSession() {
   if (summary.duration >= MIN_SAVED_SESSION_S) {
     data.history.unshift(summary);
     data.history.length = Math.min(data.history.length, MAX_HISTORY);
+    const rmssd = minimalRMSSD(state.recoveryRR);
+    if (rmssd != null) data.hrvBaseline = updateBaseline(data.hrvBaseline, rmssd);
     persist();
     renderHistory();
   }
@@ -541,6 +549,10 @@ function tick() {
       if (session.step && !session.paused && left <= 3 && left !== state.lastCountdown) beep(660, 0.12);
       state.lastCountdown = left;
     }
+  }
+  if (now - state.lastRecoveryRender >= 10000) {
+    state.lastRecoveryRender = now;
+    renderRecovery();
   }
   renderHr();
   renderLive();
@@ -743,6 +755,69 @@ function onRoutinesInput(e) {
   $('editor-total').textContent = `Duración total: ${formatDuration(routineDuration(r))}`;
 }
 
+// ---------- Recuperación y carga semanal ----------
+
+function renderRecovery() {
+  const card = $('recovery-card');
+  if (state.recoveryRR.length < 30) {
+    card.hidden = true;
+    return;
+  }
+  const rmssd = minimalRMSSD(state.recoveryRR);
+  if (rmssd == null) {
+    card.hidden = true;
+    return;
+  }
+  const baseline = baselineAvg(data.hrvBaseline);
+  const score = computeRecoveryScore(rmssd, baseline);
+  card.hidden = false;
+  $('recovery-value').textContent = score != null ? score : '--';
+  $('recovery-value').style.color = recoveryColor(score);
+  const label = $('recovery-label');
+  label.textContent = recoveryLabel(score);
+  label.style.color = recoveryColor(score);
+  $('recovery-baseline').textContent = baseline
+    ? `RMSSD actual: ${rmssd.toFixed(1)} ms · Línea base: ${baseline.toFixed(1)} ms`
+    : `RMSSD: ${rmssd.toFixed(1)} ms · Sin línea base aún`;
+}
+
+function renderWeeklyLoad() {
+  const card = $('weekly-load');
+  if (!data.history.length) {
+    card.hidden = true;
+    return;
+  }
+  card.hidden = false;
+  const load = weeklyLoad(data.history);
+  $('weekly-load-value').textContent = load;
+
+  const now = new Date();
+  const bar = $('weekly-load-bar');
+  const localKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const key = localKey(d);
+    let dayLoad = 0;
+    for (const h of data.history) {
+      if (h.date && localKey(new Date(h.date)) === key && h.zoneSecs) {
+        for (let z = 0; z < h.zoneSecs.length && z < ZONE_WEIGHTS.length; z++) {
+          dayLoad += (h.zoneSecs[z] / 60) * ZONE_WEIGHTS[z];
+        }
+      }
+    }
+    days.push({ key, load: Math.round(dayLoad), label: d.toLocaleDateString('es-ES', { weekday: 'short' }) });
+  }
+  const maxDay = Math.max(...days.map((d) => d.load), 1);
+  bar.innerHTML = days
+    .map(
+      (d) =>
+        `<div class="wl-day${d.load ? ' has-data' : ''}" title="${d.label}: ${d.load} pts" style="height:${Math.max(4, (d.load / maxDay) * 100)}%"></div>`,
+    )
+    .join('');
+}
+
 // ---------- Historial ----------
 
 function renderHistory() {
@@ -760,6 +835,7 @@ function renderHistory() {
         </div>`,
       )
       .join('') || '<p class="muted">Aquí aparecerán tus entrenamientos al terminarlos.</p>';
+  renderWeeklyLoad();
 }
 
 function onHistoryClick(e) {
@@ -817,6 +893,8 @@ function showView(name) {
   if (name === 'train') {
     renderRoutineSelect();
     drawChart();
+  } else if (name === 'history') {
+    renderWeeklyLoad();
   }
 }
 
