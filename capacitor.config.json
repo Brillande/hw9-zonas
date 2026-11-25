@@ -1,0 +1,15 @@
+{
+  "appId": "com.hw9zonas.app",
+  "appName": "HW9 Zonas",
+  "webDir": "dist",
+  "plugins": {
+    "BluetoothLe": {
+      "displayStrings": {
+        "scanning": "Buscando bandas…",
+        "cancel": "Cancelar",
+        "availableDevices": "Bandas disponibles",
+        "noDeviceFound": "No se encontró ninguna banda"
+      }
+    }
+  }
+}

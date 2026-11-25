@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>HW9 Zonas</title>
+  <meta name="theme-color" content="#0f1318">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <h1>HW9 Zonas</h1>
+    <div class="conn">
+      <span id="conn-status" class="chip">Desconectado</span>
+      <span id="battery" class="chip" hidden></span>
+      <button id="btn-connect" class="btn primary">Conectar banda</button>
+    </div>
+  </header>
+  <p id="notice" class="notice" hidden></p>
+
+  <main>
+    <section id="view-train" class="view">
+      <div id="hr-card" class="hr-card">
+        <div class="hr-value"><span id="hr-bpm">--</span><small>ppm</small></div>
+        <div id="hr-zone" class="hr-zone">Sin señal</div>
+        <div id="hr-pct" class="muted"></div>
+      </div>
+      <div id="zone-bar" class="zone-bar"></div>
+
+      <div id="setup" class="card">
+        <label class="field">Rutina
+          <select id="routine-select"></select>
+        </label>
+        <p id="routine-summary" class="muted"></p>
+        <button id="btn-start" class="btn primary big">Empezar</button>
+      </div>
+
+      <div id="live" class="card" hidden>
+        <div id="step-box">
+          <div class="step-head">
+            <span id="step-count" class="muted"></span>
+            <span id="step-target" class="tag"></span>
+          </div>
+          <div id="step-name" class="step-name"></div>
+          <div id="step-remaining" class="countdown"></div>
+          <div id="step-hint" class="hint"></div>
+          <div id="step-next" class="muted"></div>
+        </div>
+        <div class="stats">
+          <div><b id="st-elapsed">0:00</b><span>Tiempo</span></div>
+          <div><b id="st-avg">--</b><span>Media</span></div>
+          <div><b id="st-max">--</b><span>Máx</span></div>
+        </div>
+        <div class="row">
+          <button id="btn-pause" class="btn">Pausar</button>
+          <button id="btn-skip" class="btn">Saltar paso</button>
+          <button id="btn-finish" class="btn danger">Terminar</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Últimos 5 minutos</h2>
+        <canvas id="chart"></canvas>
+      </div>
+
+      <div id="zone-times-card" class="card" hidden>
+        <h2 id="zone-times-title">Tiempo en zonas</h2>
+        <p id="zone-times-summary" class="muted"></p>
+        <div id="zone-times"></div>
+      </div>
+    </section>
+
+    <section id="view-routines" class="view" hidden>
+      <div id="routines-list"></div>
+    </section>
+
+    <section id="view-history" class="view" hidden>
+      <div id="history-list"></div>
+      <div class="ad-slot" hidden></div>
+    </section>
+
+    <section id="view-settings" class="view" hidden>
+      <div class="card">
+        <h2>Tu perfil</h2>
+        <label class="field">Edad
+          <input id="set-age" type="number" min="10" max="100" inputmode="numeric">
+        </label>
+        <label class="field">FC máxima (ppm)
+          <input id="set-max" type="number" min="100" max="240" inputmode="numeric">
+        </label>
+        <p class="muted">Déjala vacía para estimarla como 220 − edad.</p>
+        <label class="field">FC en reposo (ppm)
+          <input id="set-rest" type="number" min="30" max="120" inputmode="numeric" placeholder="Opcional">
+        </label>
+        <label class="field">Cálculo de zonas
+          <select id="set-method">
+            <option value="max">% de FC máxima</option>
+            <option value="karvonen">Karvonen (reserva cardiaca)</option>
+          </select>
+        </label>
+        <p id="set-method-note" class="muted" hidden>Karvonen necesita tu FC en reposo; mientras falte se usa el % de FC máxima.</p>
+        <label class="check"><input id="set-voice" type="checkbox"> Avisos por voz (pasos, zona y ritmo)</label>
+        <label id="set-bg-audio-row" class="check" hidden><input id="set-bg-audio" type="checkbox"> Sonido con la pantalla apagada (voz pregrabada, por encima de tu música)</label>
+      </div>
+      <div class="card">
+        <h2>Tus zonas</h2>
+        <p class="muted">Puedes escribir a mano en qué pulso empieza cada zona.</p>
+        <div id="zone-table"></div>
+        <div class="row"><button id="btn-zones-reset" class="btn" hidden>Volver al cálculo automático</button></div>
+      </div>
+      <div class="card">
+        <h2>Probar sin banda</h2>
+        <p class="muted">Simula un pulso para ver cómo funciona la app.</p>
+        <button id="btn-demo" class="btn">Activar modo demo</button>
+      </div>
+      <div class="ad-slot" hidden></div>
+    </section>
+  </main>
+
+  <nav class="tabs">
+    <button data-view="train" class="active">Entrenar</button>
+    <button data-view="routines">Rutinas</button>
+    <button data-view="history">Historial</button>
+    <button data-view="settings">Ajustes</button>
+  </nav>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
