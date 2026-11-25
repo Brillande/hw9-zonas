@@ -6,6 +6,7 @@ import { initWeb, fillAds } from './web.js';
 import { isNative, keepScreenOn, backgroundMode, speak, unlockAudio, beep } from './platform.js';
 import { computeTRIMP, trimpLabel } from './trimp.js';
 import { preparePoincare, detectEctopic, drawPoincare } from './rr-viz.js';
+import { computeRMSSD, computeSDNN, computePNN50 } from './hrv.js';
 
 const HR_STALE_MS = 5000;
 const CHART_MS = 5 * 60 * 1000;
@@ -28,6 +29,11 @@ const state = {
   routineId: '',
   editing: null,
   live: [], // { ts, bpm } de los últimos 5 minutos
+  rrBuffer: [],
+  hrv: null,
+  hrvSdnn: null,
+  hrvPnn50: null,
+  hrvAt: 0,
   lastTick: Date.now(),
   lastCountdown: 0,
   noticeTimer: null,
@@ -84,6 +90,8 @@ function attach(monitor) {
     if (e.detail.rr?.length) {
       state.rrVizBuffer.push(...e.detail.rr);
       if (state.rrVizBuffer.length > 200) state.rrVizBuffer.splice(0, state.rrVizBuffer.length - 200);
+      state.rrBuffer.push(...e.detail.rr);
+      if (state.rrBuffer.length > 120) state.rrBuffer.splice(0, state.rrBuffer.length - 120);
     }
     // Con la pantalla apagada Android frena los temporizadores de la web;
     // cada lectura de la banda hace avanzar el entrenamiento igualmente.
@@ -103,6 +111,11 @@ function attach(monitor) {
       state.rrVizBuffer = [];
       $('poincare-card').hidden = true;
       $('ectopic-alert').hidden = true;
+      state.rrBuffer = [];
+      state.hrv = null;
+      state.hrvSdnn = null;
+      state.hrvPnn50 = null;
+      state.hrvAt = 0;
     }
     renderConn();
   });
@@ -199,6 +212,25 @@ function renderHr() {
   $('hr-zone').textContent = bpm ? zoneLabel(zone) : 'Sin señal';
   $('hr-pct').textContent = bpm ? `${Math.round((bpm / maxHrOf(data.profile)) * 100)} % de tu FC máxima` : '';
   for (const seg of $('zone-bar').children) seg.classList.toggle('active', Number(seg.dataset.zone) === zone);
+}
+
+function renderHrv() {
+  const card = $('hrv-card');
+  if (!card) return;
+  card.hidden = !state.rrBuffer.length;
+  const rmssd = state.hrv;
+  $('hrv-rmssd').textContent = rmssd != null ? Math.round(rmssd) : '--';
+  if (rmssd == null) {
+    $('hrv-status').textContent = 'Sin datos RR';
+  } else if (rmssd > 50) {
+    $('hrv-status').textContent = 'Relajado';
+  } else if (rmssd >= 20) {
+    $('hrv-status').textContent = 'Normal';
+  } else {
+    $('hrv-status').textContent = 'Estresado';
+  }
+  $('hrv-sdnn').textContent = state.hrvSdnn != null ? Math.round(state.hrvSdnn) : '--';
+  $('hrv-pnn50').textContent = state.hrvPnn50 != null ? `${Math.round(state.hrvPnn50)}%` : '--';
 }
 
 function zoneTimesHtml(zoneSecs) {
@@ -353,6 +385,11 @@ function finishSession() {
   if (!session) return;
   state.session = null;
   keepScreenOn(false);
+  state.rrBuffer = [];
+  state.hrv = null;
+  state.hrvSdnn = null;
+  state.hrvPnn50 = null;
+  state.hrvAt = 0;
   const summary = { id: newId(), ...session.summary() };
   state.lastSummary = summary;
   if (summary.duration >= MIN_SAVED_SESSION_S) {
@@ -475,6 +512,14 @@ function tick() {
   const bpm = currentBpm();
   if (bpm) state.live.push({ ts: now, bpm });
   while (state.live.length && now - state.live[0].ts > CHART_MS) state.live.shift();
+
+  if (now - state.hrvAt >= 5000) {
+    state.hrvAt = now;
+    state.hrv = computeRMSSD(state.rrBuffer);
+    state.hrvSdnn = computeSDNN(state.rrBuffer);
+    state.hrvPnn50 = computePNN50(state.rrBuffer);
+    renderHrv();
+  }
 
   const session = state.session;
   if (session) {
@@ -808,4 +853,5 @@ renderLive();
 renderRoutines();
 renderHistory();
 renderSettings();
+renderHrv();
 setInterval(tick, 1000);

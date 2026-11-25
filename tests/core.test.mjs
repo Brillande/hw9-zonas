@@ -6,6 +6,7 @@ import { Session, expandSteps, routineDuration, formatDuration } from '../js/ses
 import { computeTRIMP, trimpLabel } from '../js/trimp.js';
 import { caloriesPerMinute } from '../js/calories.js';
 import { preparePoincare, detectEctopic } from '../js/rr-viz.js';
+import { computeRMSSD, computeSDNN, computePNN50, filterRR } from '../js/hrv.js';
 
 const view = (...bytes) => new DataView(new Uint8Array(bytes).buffer);
 const profile = { age: 30, maxHr: null, restHr: null, method: 'max' };
@@ -203,4 +204,41 @@ test('detectEctopic no marca latidos uniformes', () => {
 
 test('detectEctopic devuelve vacío con menos de 5 valores', () => {
   assert.deepEqual(detectEctopic([800, 810, 790]), []);
+});
+
+// ---------- HRV ----------
+
+test('computeRMSSD: valores conocidos', () => {
+  const rr = [800, 810, 790, 805, 795];
+  const rmssd = computeRMSSD(rr);
+  assert.ok(rmssd >= 10 && rmssd <= 18, `RMSSD ${rmssd} fuera de rango esperado 10-18`);
+});
+
+test('computeRMSSD: devuelve null con menos de 5 intervalos', () => {
+  assert.equal(computeRMSSD([800, 810, 790]), null);
+  assert.equal(computeRMSSD([]), null);
+});
+
+test('filterRR: elimina valores fuera de rango fisiológico', () => {
+  const result = filterRR([800, 200, 810, 2500, 790, 805, 795]);
+  assert.ok(!result.includes(200), 'No debe incluir <300ms');
+  assert.ok(!result.includes(2500), 'No debe incluir >2000ms');
+  assert.ok(result.includes(800));
+});
+
+test('computePNN50: valores conocidos', () => {
+  const rr = [800, 860, 800, 860, 800];
+  const pnn50 = computePNN50(rr);
+  assert.equal(pnn50, 100);
+  const rr2 = [800, 810, 820, 830, 840];
+  const pnn50b = computePNN50(rr2);
+  assert.equal(pnn50b, 0);
+});
+
+test('computeSDNN: valores conocidos', () => {
+  const rr = [800, 800, 800, 800, 800];
+  assert.equal(computeSDNN(rr), 0);
+  const rr2 = [800, 810, 790, 805, 795];
+  const sdnn = computeSDNN(rr2);
+  assert.ok(sdnn > 0, 'SDNN debe ser positivo para intervalos variables');
 });
