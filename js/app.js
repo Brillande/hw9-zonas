@@ -326,7 +326,7 @@ function coach(session, bpm, dt, now) {
 
 function startSession() {
   unlockAudio();
-  state.session = new Session({ routine: selectedRoutine(), bounds: bounds(), profile: data.profile });
+  state.session = new Session({ routine: selectedRoutine(), bounds: bounds(), profile: { ...data.profile } });
   state.lastSummary = null;
   state.lastTick = Date.now();
   state.coach = newCoach();
@@ -367,7 +367,7 @@ function renderZoneTimes() {
   } else if (summary) {
     $('zone-times-title').textContent = 'Último entrenamiento';
     $('zone-times-summary').textContent =
-      `${summary.routineName} · ${formatDuration(summary.duration)} · media ${summary.avgBpm || '--'} · máx ${summary.maxBpm || '--'} ppm`;
+      `${summary.routineName} · ${formatDuration(summary.duration)} · media ${summary.avgBpm || '--'} · máx ${summary.maxBpm || '--'} ppm${summary.calories ? ` · ${summary.calories} kcal` : ''}`;
     $('zone-times').innerHTML = zoneTimesHtml(summary.zoneSecs);
   }
 }
