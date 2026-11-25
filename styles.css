@@ -126,3 +126,7 @@ input[type="checkbox"] { width: 18px; height: 18px; }
 }
 .tabs button { font: inherit; font-size: .88rem; color: var(--muted); background: none; border: 0; padding: 16px 4px; cursor: pointer; border-top: 2px solid transparent; }
 .tabs button.active { color: var(--text); border-top-color: var(--accent); }
+
+/* Poincaré */
+#poincare { display: block; width: 100%; height: 200px; }
+.ectopic-alert { margin: 0 0 8px; padding: 10px 12px; border-radius: 10px; background: #3a1a1a; border: 1px solid #f85149; font-size: .9rem; color: #f85149; font-weight: 600; }
