@@ -156,3 +156,12 @@ input[type="checkbox"] { width: 18px; height: 18px; }
 .weekly-load-bar { display: flex; gap: 3px; height: 32px; margin-top: 10px; }
 .weekly-load-bar .wl-day { flex: 1; background: var(--accent); border-radius: 4px; opacity: 0.3; display: flex; align-items: flex-end; }
 .weekly-load-bar .wl-day.has-data { opacity: 1; }
+
+/* Diagnóstico Bluetooth (Ajustes) */
+.diag summary { cursor: pointer; font-weight: 600; }
+.diag[open] summary { margin-bottom: 8px; }
+.ble-log {
+  max-height: 260px; overflow: auto; margin: 8px 0 0; padding: 8px; border-radius: 8px;
+  background: #0b0f14; border: 1px solid var(--line); font-size: .72rem; line-height: 1.45;
+  white-space: pre-wrap; word-break: break-word;
+}
