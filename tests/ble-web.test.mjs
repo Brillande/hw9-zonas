@@ -32,7 +32,7 @@ class FakeCharacteristic extends EventTarget {
   }
 }
 
-function fakeBand({ mode = 'characteristic', sendAfterStarts = 1 } = {}) {
+function fakeBand({ mode = 'characteristic', sendAfterStarts = 1, hangStart = false } = {}) {
   const bluetooth = new EventTarget();
   bluetooth.getAvailability = async () => true;
   const device = new EventTarget();
@@ -67,6 +67,14 @@ function fakeBand({ mode = 'characteristic', sendAfterStarts = 1 } = {}) {
     getPrimaryService: (uuid) => server.getPrimaryService(uuid),
   };
   bluetooth.requestDevice = async () => device;
+  if (hangStart) {
+    // startNotifications suscribe, pero su promesa no se resuelve nunca.
+    hr.startNotifications = () => {
+      hr.starts++;
+      hr.notifying = true;
+      return new Promise(() => {});
+    };
+  }
 
   function push(bytes) {
     if (!hr.notifying || hr.starts < sendAfterStarts) return;
@@ -209,6 +217,19 @@ test('web: si nunca llega el pulso, avisa con el evento nodata', async () => {
   await monitor.connect();
   assert.ok(await until(() => rec.nodata === 1, 1000));
   assert.match(bleLog.text(), /Sigue sin llegar el pulso/);
+  await monitor.disconnect();
+});
+
+test('web: si startNotifications no responde nunca, se conecta igual y llega el pulso', async () => {
+  const band = fakeBand({ hangStart: true });
+  const monitor = new HrMonitor({ notifyTimeoutMs: 40, watchdogMs: 5000 });
+  const rec = record(monitor);
+  await monitor.connect();
+  assert.equal(rec.statuses.at(-1), 'connected');
+  assert.match(bleLog.text(), /startNotifications no respondió/);
+  band.push([0x06, 88]);
+  assert.ok(await until(() => rec.beats.length === 1));
+  assert.equal(rec.beats[0].bpm, 88);
   await monitor.disconnect();
 });
 

@@ -45,6 +45,7 @@ const state = {
   coach: newCoach(),
   rrVizBuffer: [],
   lastPoincareRender: 0,
+  connectStartedAt: 0, // para mostrar el diagnóstico si la banda no da pulso
 };
 
 function newCoach() {
@@ -136,6 +137,8 @@ function attach(monitor) {
 
 async function connect(monitor) {
   attach(monitor);
+  state.connectStartedAt = Date.now();
+  if (monitor instanceof HrMonitor) bleLog.add(`HW9 Zonas, versión ${APP_VERSION}`);
   try {
     await monitor.connect();
   } catch (err) {
@@ -532,6 +535,7 @@ function tick() {
   const bpm = currentBpm();
   if (bpm) state.live.push({ ts: now, bpm });
   while (state.live.length && now - state.live[0].ts > CHART_MS) state.live.shift();
+  renderInlineDiag(bpm, now);
 
   if (now - state.hrvAt >= 5000) {
     state.hrvAt = now;
@@ -848,9 +852,33 @@ function renderHistory() {
 
 const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'desarrollo';
 
+const INLINE_DIAG_AFTER_MS = 12000;
+
 function renderBleLog() {
-  $('ble-log').textContent = bleLog.text() || 'Sin actividad todavía. Conecta la banda y vuelve aquí.';
+  const text = bleLog.text() || 'Sin actividad todavía. Conecta la banda y vuelve aquí.';
+  $('ble-log').textContent = text;
+  const inline = $('ble-log-inline');
+  inline.textContent = text;
+  inline.scrollTop = inline.scrollHeight;
 }
+
+// Con una banda real que no da pulso pasado un rato, el registro se muestra
+// en la pantalla principal: basta una captura para saber qué ocurre.
+function renderInlineDiag(bpm, now) {
+  const waiting = state.monitor instanceof HrMonitor && !bpm && now - state.connectStartedAt > INLINE_DIAG_AFTER_MS;
+  if ($('diag-inline').hidden === !waiting) return;
+  $('diag-inline').hidden = !waiting;
+  if (waiting) renderBleLog();
+}
+
+// Errores de JavaScript al registro: en iOS no hay consola a mano.
+window.addEventListener('error', (e) => {
+  const where = e.filename ? ` (${e.filename.split('/').pop()}:${e.lineno})` : '';
+  bleLog.add(`Error JS: ${e.message}${where}`);
+});
+window.addEventListener('unhandledrejection', (e) => {
+  bleLog.add(`Promesa rechazada: ${e.reason?.name || ''} ${e.reason?.message || e.reason}`);
+});
 
 function shareBleLog() {
   const text = `HW9 Zonas · versión ${APP_VERSION}\n${bleLog.text()}\n`;
@@ -955,6 +983,7 @@ $('routines-list').addEventListener('input', onRoutinesInput);
 $('history-list').addEventListener('click', onHistoryClick);
 $('btn-export').addEventListener('click', exportHistory);
 $('btn-share-log').addEventListener('click', shareBleLog);
+$('btn-share-log-inline').addEventListener('click', shareBleLog);
 bleLog.addEventListener('change', renderBleLog);
 $('app-version').textContent = APP_VERSION;
 $('view-settings').addEventListener('change', onSettingsChange);

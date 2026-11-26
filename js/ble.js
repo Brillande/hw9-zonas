@@ -13,6 +13,8 @@ const BATTERY_SERVICE = numberToUUID(0x180f);
 const BATTERY_LEVEL = numberToUUID(0x2a19);
 const MAX_RECONNECT_ATTEMPTS = 20;
 const CONNECT_TIMEOUT_MS = 10000;
+const STEP_TIMEOUT_MS = 10000; // buscar servicio o característica
+const NOTIFY_TIMEOUT_MS = 5000; // respuesta de startNotifications
 const WATCHDOG_MS = 6000; // sin pulso en este tiempo, se reactivan las notificaciones
 const DETAILED_BEATS = 5; // las primeras lecturas se apuntan con detalle en el registro
 const DUPLICATE_MS = 150; // la misma notificación recibida por dos vías
@@ -92,6 +94,7 @@ export class HrMonitor extends Monitor {
   #manual = false;
   #reconnecting = false;
   #watchdogMs;
+  #notifyTimeoutMs;
   // Solo web: el BluetoothDevice y las características con listener puesto.
   #web = null;
   #hrChar = null;
@@ -102,9 +105,10 @@ export class HrMonitor extends Monitor {
   #last = { bytes: '', at: 0 };
   #watchdog = null;
 
-  constructor({ watchdogMs = WATCHDOG_MS } = {}) {
+  constructor({ watchdogMs = WATCHDOG_MS, notifyTimeoutMs = NOTIFY_TIMEOUT_MS } = {}) {
     super();
     this.#watchdogMs = watchdogMs;
+    this.#notifyTimeoutMs = notifyTimeoutMs;
   }
 
   get name() {
@@ -187,6 +191,7 @@ export class HrMonitor extends Monitor {
     clearTimeout(this.#watchdog);
     const gatt = this.#web.gatt;
     let server;
+    log('Conectando (GATT)…');
     try {
       server = await withTimeout(gatt.connect(), CONNECT_TIMEOUT_MS, 'Connection timeout');
     } catch (err) {
@@ -195,16 +200,38 @@ export class HrMonitor extends Monitor {
       } catch {}
       throw err;
     }
-    log('Conectada (GATT)');
-    const service = await server.getPrimaryService(HR_SERVICE);
-    log(`Servicio de pulso: ${service.uuid}`);
-    const characteristic = await service.getCharacteristic(HR_MEASUREMENT);
+    // Cada paso se apunta antes de darlo: si uno se queda colgado, se ve cuál.
+    log('Conectada (GATT). Buscando el servicio de pulso…');
+    const service = await withTimeout(
+      server.getPrimaryService(HR_SERVICE),
+      STEP_TIMEOUT_MS,
+      'La banda no respondió al buscar el servicio de pulso',
+    );
+    log(`Servicio de pulso: ${service.uuid}. Buscando la característica…`);
+    const characteristic = await withTimeout(
+      service.getCharacteristic(HR_MEASUREMENT),
+      STEP_TIMEOUT_MS,
+      'La banda no respondió al buscar la característica de pulso',
+    );
     const p = characteristic.properties || {};
     log(`Característica: ${characteristic.uuid} · notify ${p.notify} · indicate ${p.indicate}`);
     this.#listenHr(characteristic);
-    await characteristic.startNotifications();
-    log('Notificaciones de pulso activadas; esperando datos…');
+    await this.#startHrNotifications(characteristic);
     this.#armWatchdog(characteristic, 1);
+  }
+
+  // Si startNotifications no responde, se sigue adelante esperando el pulso
+  // igualmente: la suscripción puede haberse hecho aunque la promesa no se
+  // resuelva nunca. Un error de verdad sí se propaga.
+  async #startHrNotifications(characteristic) {
+    log('Activando notificaciones…');
+    try {
+      await withTimeout(characteristic.startNotifications(), this.#notifyTimeoutMs, 'startNotifications no respondió');
+      log('Notificaciones de pulso activadas; esperando datos…');
+    } catch (err) {
+      if (err?.name !== 'TimeoutError') throw err;
+      log(`startNotifications no respondió en ${this.#notifyTimeoutMs / 1000} s; se espera el pulso igualmente`);
+    }
   }
 
   #listenHr(characteristic) {
@@ -239,14 +266,13 @@ export class HrMonitor extends Monitor {
       }
       log(`Sin datos tras ${this.#watchdogMs / 1000} s: se reactivan las notificaciones`);
       try {
-        await characteristic.stopNotifications?.();
+        await withTimeout(characteristic.stopNotifications?.(), this.#notifyTimeoutMs, 'stopNotifications no respondió');
       } catch (err) {
         log(`stopNotifications: ${errText(err)}`);
       }
       try {
         this.#listenHr(characteristic);
-        await characteristic.startNotifications();
-        log('Notificaciones reactivadas');
+        await this.#startHrNotifications(characteristic);
       } catch (err) {
         log(`startNotifications: ${errText(err)}`);
       }
@@ -371,7 +397,7 @@ export class HrMonitor extends Monitor {
 function withTimeout(promise, ms, message) {
   let timer;
   const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error(message)), ms);
+    timer = setTimeout(() => reject(Object.assign(new Error(message), { name: 'TimeoutError' })), ms);
   });
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }

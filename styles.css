@@ -165,3 +165,4 @@ input[type="checkbox"] { width: 18px; height: 18px; }
   background: #0b0f14; border: 1px solid var(--line); font-size: .72rem; line-height: 1.45;
   white-space: pre-wrap; word-break: break-word;
 }
+#ble-log-inline { max-height: none; } /* entero, para que quepa en una captura */
