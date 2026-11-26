@@ -116,6 +116,7 @@
         <div class="weekly-load-value"><span id="weekly-load-value">0</span><small>puntos (7 días)</small></div>
         <div id="weekly-load-bar" class="weekly-load-bar"></div>
       </div>
+      <button id="btn-export" class="btn" type="button" hidden>Exportar entrenamientos (Excel / CSV)</button>
       <div id="history-list"></div>
       <div class="ad-slot" hidden></div>
     </section>
@@ -163,6 +164,12 @@
         <p class="muted">Simula un pulso para ver cómo funciona la app.</p>
         <button id="btn-demo" class="btn">Activar modo demo</button>
       </div>
+      <details class="card diag">
+        <summary>Diagnóstico Bluetooth</summary>
+        <p class="muted">Versión <span id="app-version"></span>. Si la banda conecta pero no llega el pulso, comparte este registro.</p>
+        <pre id="ble-log" class="ble-log"></pre>
+        <div class="row"><button id="btn-share-log" class="btn small" type="button">Compartir registro</button></div>
+      </details>
       <div class="ad-slot" hidden></div>
     </section>
   </main>

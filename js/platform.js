@@ -20,6 +20,30 @@ export function backgroundMode(on, { webAudio = false } = {}) {
   }
 }
 
+// Entrega un archivo de texto al usuario. App Android: menú de compartir del
+// sistema. Móvil en el navegador (iOS, Android): menú de compartir si lo
+// admite, para guardarlo en Archivos o enviarlo. Ordenador: descarga.
+export async function shareFile(name, type, text) {
+  if (isNative) return Workout.shareFile({ name, type, text });
+  const file = new File([text], name, { type });
+  const mobile = matchMedia('(pointer: coarse)').matches;
+  if (mobile && navigator.canShare?.({ files: [file] })) {
+    try {
+      return await navigator.share({ files: [file], title: name });
+    } catch (err) {
+      if (err?.name === 'AbortError') return; // el usuario cerró el menú
+    }
+  }
+  const url = URL.createObjectURL(file);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
 export function keepScreenOn(on) {
   (on ? KeepAwake.keepAwake() : KeepAwake.allowSleep()).catch(() => {});
 }

@@ -1,9 +1,10 @@
-import { HrMonitor, DemoMonitor, bluetoothAvailable } from './ble.js';
+import { HrMonitor, DemoMonitor, bluetoothAvailable, bleLog } from './ble.js';
 import { ZONES, zoneBounds, zoneFor, zoneColor, zoneLabel, maxHrOf } from './zones.js';
 import { Session, routineDuration, expandSteps, formatDuration } from './session.js';
 import { load, save, newId, MAX_HISTORY } from './storage.js';
 import { initWeb, fillAds } from './web.js';
-import { isNative, keepScreenOn, backgroundMode, speak, unlockAudio, beep } from './platform.js';
+import { isNative, keepScreenOn, backgroundMode, speak, unlockAudio, beep, shareFile } from './platform.js';
+import { historyToCsv, exportFileName } from './export.js';
 import { computeTRIMP, trimpLabel } from './trimp.js';
 import { preparePoincare, detectEctopic, drawPoincare } from './rr-viz.js';
 import { computeRMSSD, computeSDNN, computePNN50 } from './hrv.js';
@@ -110,6 +111,10 @@ function attach(monitor) {
     state.battery = e.detail;
     renderConn();
   });
+  monitor.addEventListener('nodata', () => {
+    if (state.monitor !== monitor) return;
+    showNotice('La banda está conectada pero no envía pulso. Comprueba que esté bien colocada sobre la piel. Si sigue igual, comparte el registro desde Ajustes → Diagnóstico Bluetooth.');
+  });
   monitor.addEventListener('status', (e) => {
     if (state.monitor !== monitor) return;
     state.status = e.detail;
@@ -145,7 +150,7 @@ async function connect(monitor) {
 function toggleConnection() {
   if (state.monitor) return state.monitor.disconnect();
   if (!bluetoothAvailable()) {
-    return showNotice('Este navegador no tiene Bluetooth. Usa la app Android o Chrome, o prueba el modo demo en Ajustes.');
+    return showNotice('Este navegador no tiene Bluetooth. Usa la app Android, Chrome o, en iPhone, Bluefy; o prueba el modo demo en Ajustes.');
   }
   connect(new HrMonitor());
 }
@@ -835,7 +840,29 @@ function renderHistory() {
         </div>`,
       )
       .join('') || '<p class="muted">Aquí aparecerán tus entrenamientos al terminarlos.</p>';
+  $('btn-export').hidden = !data.history.length;
   renderWeeklyLoad();
+}
+
+// ---------- Diagnóstico Bluetooth ----------
+
+const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'desarrollo';
+
+function renderBleLog() {
+  $('ble-log').textContent = bleLog.text() || 'Sin actividad todavía. Conecta la banda y vuelve aquí.';
+}
+
+function shareBleLog() {
+  const text = `HW9 Zonas · versión ${APP_VERSION}\n${bleLog.text()}\n`;
+  shareFile('hw9-diagnostico.txt', 'text/plain', text).catch((err) =>
+    showNotice(`No se pudo compartir: ${err?.message || err}`),
+  );
+}
+
+function exportHistory() {
+  shareFile(exportFileName(), 'text/csv', historyToCsv(data.history)).catch((err) =>
+    showNotice(`No se pudo exportar: ${err?.message || err}`),
+  );
 }
 
 function onHistoryClick(e) {
@@ -926,6 +953,10 @@ $('btn-finish').addEventListener('click', (e) => {
 $('routines-list').addEventListener('click', onRoutinesClick);
 $('routines-list').addEventListener('input', onRoutinesInput);
 $('history-list').addEventListener('click', onHistoryClick);
+$('btn-export').addEventListener('click', exportHistory);
+$('btn-share-log').addEventListener('click', shareBleLog);
+bleLog.addEventListener('change', renderBleLog);
+$('app-version').textContent = APP_VERSION;
 $('view-settings').addEventListener('change', onSettingsChange);
 $('btn-zones-reset').addEventListener('click', resetZones);
 
@@ -939,4 +970,5 @@ renderRoutines();
 renderHistory();
 renderSettings();
 renderHrv();
+renderBleLog();
 setInterval(tick, 1000);

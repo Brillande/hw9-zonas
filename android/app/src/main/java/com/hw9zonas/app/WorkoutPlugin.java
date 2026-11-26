@@ -1,24 +1,33 @@
 package com.hw9zonas.app;
 
 import android.Manifest;
+import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
+import android.net.Uri;
 import android.os.Build;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
-// Puente con Android: servicio en primer plano del entrenamiento y avisos por voz.
+// Puente con Android: servicio en primer plano del entrenamiento, avisos por voz
+// y exportación de archivos.
 @CapacitorPlugin(name = "Workout")
 public class WorkoutPlugin extends Plugin {
 
@@ -129,6 +138,35 @@ public class WorkoutPlugin extends Plugin {
             ContextCompat.startForegroundService(context, new Intent(context, WorkoutService.class));
             call.resolve();
         } catch (RuntimeException e) {
+            call.reject(e.getMessage());
+        }
+    }
+
+    // Exportación: guarda el texto en la caché de la app y abre el menú de
+    // compartir del sistema (Drive, Gmail, WhatsApp, Archivos…).
+    @PluginMethod
+    public void shareFile(PluginCall call) {
+        String name = new File(call.getString("name", "export.csv")).getName();
+        String type = call.getString("type", "text/plain");
+        String text = call.getString("text", "");
+        Context context = getContext();
+        try {
+            File dir = new File(context.getCacheDir(), "export");
+            if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("No se pudo crear la carpeta de exportación");
+            File file = new File(dir, name);
+            try (OutputStream out = new FileOutputStream(file)) {
+                out.write(text.getBytes(StandardCharsets.UTF_8));
+            }
+            Uri uri = FileProvider.getUriForFile(context, context.getPackageName() + ".fileprovider", file);
+            Intent send = new Intent(Intent.ACTION_SEND)
+                .setType(type)
+                .putExtra(Intent.EXTRA_STREAM, uri)
+                .putExtra(Intent.EXTRA_SUBJECT, name)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            send.setClipData(ClipData.newRawUri(name, uri));
+            getActivity().startActivity(Intent.createChooser(send, "Exportar entrenamientos"));
+            call.resolve();
+        } catch (IOException | RuntimeException e) {
             call.reject(e.getMessage());
         }
     }

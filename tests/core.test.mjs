@@ -340,3 +340,40 @@ test('baselineAvg promedia las entradas', () => {
   assert.equal(baselineAvg(log), 40);
   assert.equal(baselineAvg([]), null);
 });
+
+// ---------- Exportación CSV ----------
+
+import { historyToCsv, exportFileName } from '../js/export.js';
+
+test('historyToCsv: cabecera, orden cronológico y formato europeo', () => {
+  const older = new Date(2026, 10, 20, 7, 5).getTime();
+  const newer = new Date(2026, 10, 24, 18, 30).getTime();
+  const csv = historyToCsv([
+    { id: 'b', date: newer, routineName: 'Intervalos 4×4', duration: 2430, avgBpm: 151, maxBpm: 178, zoneSecs: [0, 600, 900, 330, 480, 120], calories: 412, energy: 0 },
+    { id: 'a', date: older, routineName: 'Base Z2 · 30 min', duration: 1800, avgBpm: 128, maxBpm: 141, zoneSecs: [30, 300, 1470, 0, 0, 0], calories: 0, energy: 0 },
+  ]);
+  assert.ok(csv.startsWith('﻿'), 'BOM para que Excel respete las tildes');
+  const lines = csv.slice(1).trimEnd().split('\r\n');
+  assert.equal(lines.length, 3);
+  assert.match(lines[0], /^Fecha;Hora;Entrenamiento;Duración;/);
+  assert.equal(lines[0].split(';').length, 16);
+  assert.equal(lines[1], '2026-11-20;07:05;Base Z2 · 30 min;30:00;30;128;141;;;41,8;0,5;5;24,5;0;0;0');
+  // TRIMP: 5×1 + 24,5×1,5 = 41,75 → 41,8; aquí 10×1 + 15×1,5 + 5,5×2 + 8×3 + 2×4,5 = 76,5
+  assert.equal(lines[2], '2026-11-24;18:30;Intervalos 4×4;40:30;40,5;151;178;412;;76,5;0;10;15;5,5;8;2');
+});
+
+test('historyToCsv: escapa separadores, comillas y textos que Excel tomaría por fórmula', () => {
+  const csv = historyToCsv([
+    { date: 0, routineName: 'Series; "duras"', duration: 60, avgBpm: 0, maxBpm: 0, zoneSecs: [60, 0, 0, 0, 0, 0] },
+    { date: 1, routineName: '=HYPERLINK("x")', duration: 60 },
+  ]);
+  const [, first, second] = csv.slice(1).trimEnd().split('\r\n');
+  assert.equal(first.split(';')[2] + ';' + first.split(';')[3], '"Series; ""duras"""');
+  assert.match(second, /;"'=HYPERLINK\(""x""\)";/);
+  // Sin datos de zonas: columnas vacías, no ceros inventados.
+  assert.ok(second.endsWith(';;;;;;;'));
+});
+
+test('exportFileName: incluye la fecha local', () => {
+  assert.equal(exportFileName(new Date(2026, 0, 5)), 'hw9-entrenamientos-2026-01-05.csv');
+});
